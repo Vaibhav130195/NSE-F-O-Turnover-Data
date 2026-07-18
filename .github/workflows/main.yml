@@ -1,0 +1,39 @@
+name: Test NSE BSE reachability
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Probe NSE and BSE
+        run: |
+          python - <<'EOF'
+          import requests
+          UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+          s = requests.Session()
+          s.headers.update({"User-Agent": UA,
+                            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+                            "Accept-Language": "en-US,en;q=0.9"})
+          try:
+              s.get("https://www.nseindia.com", timeout=20)
+              s.get("https://www.nseindia.com/market-data/business-growth-fo-segment", timeout=20)
+              r = s.get("https://www.nseindia.com/api/historicalOR/fo/tbg/yearly",
+                        headers={"Accept": "*/*",
+                                 "Referer": "https://www.nseindia.com/market-data/business-growth-fo-segment",
+                                 "X-Requested-With": "XMLHttpRequest"}, timeout=25)
+              print("NSE:", r.status_code, "bytes", len(r.content))
+          except Exception as e:
+              print("NSE FAILED:", type(e).__name__, e)
+          try:
+              b = requests.get("https://api.bseindia.com/BseIndiaAPI/api/Mkt_Keystat_turnover_deri_yearly_beta/w",
+                               headers={"User-Agent": UA, "Accept": "application/json",
+                                        "Referer": "https://www.bseindia.com/",
+                                        "Origin": "https://www.bseindia.com"}, timeout=25)
+              print("BSE:", b.status_code, "bytes", len(b.content))
+          except Exception as e:
+              print("BSE FAILED:", type(e).__name__, e)
+          EOF
